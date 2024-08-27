@@ -1,0 +1,39 @@
+{
+  "version": "0.1.0",
+  "license": "MIT",
+  "name": "wasm-pack-inline",
+  "author": "ahaoboy",
+  "module": "dist/index.js",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "bin": {
+    "wasm-pack-inline": "./bin/cli.js"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "dev": "tsc -w",
+    "build": "tsc"
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": false,
+    "trailingComma": "es5"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "11.0.4",
+    "@types/node": "22.4.0",
+    "typescript": "5.5.4"
+  },
+  "dependencies": {
+    "commander": "12.1.0",
+    "fs-extra": "11.2.0",
+    "tslib": "^2.4.0"
+  }
+}
