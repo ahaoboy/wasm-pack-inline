@@ -1,65 +1,68 @@
-import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { basename, isAbsolute, join, } from "node:path";
-import { assert, } from "./util";
-import { Command } from "commander";
-import { outputFileSync, } from "fs-extra";
-const program = new Command();
-const cwd = process.cwd();
+import { readFileSync, readdirSync, existsSync } from "node:fs"
+import { basename, isAbsolute, join } from "node:path"
+import { assert } from "./util"
+import { Command } from "commander"
+import { outputFileSync } from "fs-extra"
+const program = new Command()
+const cwd = process.cwd()
 
 program
   .argument("[inDir]")
   .option("-d, --dir [type]", "output dir", ".")
   .option("-n, --name [type]", "output name")
   .action(async (inDir: string) => {
-    const rootDir = isAbsolute(inDir) ? inDir : join(cwd, inDir);
-    const options = program.opts();
-    const fileList = readdirSync(rootDir);
+    const rootDir = isAbsolute(inDir) ? inDir : join(cwd, inDir)
+    const options = program.opts()
+    const fileList = readdirSync(rootDir)
     if (!fileList.length) {
-      console.error("${rootDir} has no files");
-      return;
+      console.error("${rootDir} has no files")
+      return
     }
     // wasm
-    const wasmName = fileList.find(file => file.endsWith("_bg.wasm"));
+    const wasmName = fileList.find((file) => file.endsWith("_bg.wasm"))
     assert(wasmName, "wasm file not found")
 
-    const wasmPath = join(rootDir, wasmName);
+    const wasmPath = join(rootDir, wasmName)
     if (!existsSync(wasmPath)) {
-      console.error(`${rootDir} has no wasm file ${wasmPath}`);
-      return;
+      console.error(`${rootDir} has no wasm file ${wasmPath}`)
+      return
     }
 
     // js
-    let jsName = wasmName.replace(/_bg\.wasm/gs, ".js");
-    let jsPath = join(rootDir, jsName);
-    const projectName = jsName.split('.')[0]
-    const optName = options.name ?? projectName;
+    let jsName = wasmName.replace(/_bg\.wasm/gs, ".js")
+    let jsPath = join(rootDir, jsName)
+    const projectName = jsName.split(".")[0]
+    const optName = options.name ?? projectName
 
     if (!existsSync(jsPath)) {
-      jsName = wasmName.replace(".wasm", ".js");
-      jsPath = join(rootDir, jsName);
+      jsName = wasmName.replace(".wasm", ".js")
+      jsPath = join(rootDir, jsName)
     }
-    const dtsPath = jsPath.replace(".js", '.d.ts')
+    const dtsPath = jsPath.replace(".js", ".d.ts")
 
     if (!existsSync(jsPath)) {
-      console.error(`${rootDir} has no js file ${jsPath}`);
-      return;
+      console.error(`${rootDir} has no js file ${jsPath}`)
+      return
     }
 
-    const bufferData = readFileSync(wasmPath).toString("base64");
+    const bufferData = readFileSync(wasmPath).toString("base64")
     // const base64Path = join(cwd, options.dir, "base64.js");
     // const base64dtsPath = join(cwd, options.dir, "base64.d.ts");
     // outputFileSync(base64Path, `export const base64 = "${bufferData}";`);
     // outputFileSync(base64dtsPath, "export const base64: string;");
 
-    let dtsStr = readFileSync(dtsPath, 'utf-8')
+    let dtsStr = readFileSync(dtsPath, "utf-8")
 
     const delIndex = dtsStr.indexOf("export type InitInput")
     dtsStr = dtsStr.slice(0, delIndex)
-    const dtsOutPath = join(cwd, options.dir, basename(dtsPath).replace(projectName, optName));
+    const dtsOutPath = join(
+      cwd,
+      options.dir,
+      basename(dtsPath).replace(projectName, optName),
+    )
     outputFileSync(dtsOutPath, dtsStr)
 
-
-    let jsOutStr = readFileSync(jsPath, "utf8");
+    let jsOutStr = readFileSync(jsPath, "utf8")
     const decodeFnCode = `
 const __lookup__ = new Uint8Array([
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -128,36 +131,51 @@ ${decodeFnCode}
 
 ${jsOutStr}
 `.trim()
-    const jsStrOutPath = join(cwd, options.dir, basename(jsPath).replace(projectName, optName));
+    const jsStrOutPath = join(
+      cwd,
+      options.dir,
+      basename(jsPath).replace(projectName, optName),
+    )
 
-    const st = jsOutStr.indexOf('async function __wbg_load(')
-    const end = jsOutStr.indexOf('function __wbg_get_imports() ')
     {
-      const i = jsOutStr.indexOf('async function __wbg_init(')
+      // remove __wbg_init
+      const i = jsOutStr.indexOf("async function __wbg_init(")
       jsOutStr = jsOutStr.slice(0, i)
-
     }
 
+    {
+      // remove __wbg_load
+      const st = jsOutStr.indexOf("async function __wbg_load(")
+      const end = jsOutStr.indexOf("function __wbg_get_imports() ")
+      jsOutStr = jsOutStr.slice(0, st) + jsOutStr.slice(end)
+    }
 
-    jsOutStr = jsOutStr.replace(`    if (typeof module !== 'undefined' && Object.getPrototypeOf(module) === Object.prototype)
-    ({module} = module)
-    else
-    console.warn('using deprecated parameters for \`initSync()\`; pass a single object instead')`, `
+    {
+      // add initSync
+      const st = jsOutStr.indexOf("if (wasm !== undefined) return wasm;")
+      const end = jsOutStr.indexOf("const imports = __wbg_get_imports();")
+      jsOutStr = `${jsOutStr.slice(0, st)}
 
-const bytes = __decode_base64__(__wasm_base64__);
-const module = new WebAssembly.Module(bytes);
+      const bytes = __decode_base64__(__wasm_base64__);
+      const module = new WebAssembly.Module(bytes);
 
-`)
+      ${jsOutStr.slice(end)}`
+    }
 
-    jsOutStr = jsOutStr.replace(`    if (!(module instanceof WebAssembly.Module)) {
+    jsOutStr = jsOutStr.replace(
+      `    if (!(module instanceof WebAssembly.Module)) {
         module = new WebAssembly.Module(module);
-    }`, '')
+    }`,
+      "",
+    )
 
-    jsOutStr = jsOutStr.replace('function initSync(module)', 'function initSync()')
-    jsOutStr = jsOutStr.slice(0, st) + jsOutStr.slice(end)
+    jsOutStr = jsOutStr.replace(
+      "function initSync(module)",
+      "function initSync()",
+    )
 
-    jsOutStr = jsOutStr.replaceAll('__wbg_init.', 'initSync.')
-    jsOutStr += "\ninitSync() "
+    jsOutStr = jsOutStr.replaceAll("__wbg_init.", "initSync.")
+    jsOutStr += "\ninitSync()\n"
     outputFileSync(jsStrOutPath, jsOutStr)
-  });
-program.parse();
+  })
+program.parse()
