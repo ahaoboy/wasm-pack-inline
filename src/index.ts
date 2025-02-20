@@ -152,7 +152,7 @@ ${jsOutStr}
 
     {
       // add initSync
-      const st = jsOutStr.indexOf("if (wasm !== undefined) return wasm;")
+      const st = jsOutStr.indexOf("if (typeof module !== 'undefined') {")
       const end = jsOutStr.indexOf("const imports = __wbg_get_imports();")
       jsOutStr = `${jsOutStr.slice(0, st)}
 
@@ -170,8 +170,13 @@ ${jsOutStr}
     )
 
     jsOutStr = jsOutStr.replace(
-      "function initSync(module)",
+      /function initSync\((.*?)\)/,
       "function initSync()",
+    )
+
+    jsOutStr = jsOutStr.replace(
+      "__wbg_init_memory(imports, memory);",
+      "__wbg_init_memory(imports)",
     )
 
     jsOutStr = jsOutStr.replaceAll("__wbg_init.", "initSync.")
