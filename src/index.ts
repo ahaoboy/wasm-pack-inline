@@ -152,7 +152,9 @@ ${jsOutStr}
 
     {
       // add initSync
-      const st = jsOutStr.indexOf("if (typeof module !== 'undefined') {")
+      const st = jsOutStr.includes("if (typeof module !== 'undefined') {") ?
+          jsOutStr.indexOf("if (typeof module !== 'undefined') {") :
+          jsOutStr.indexOf("if (wasm !== undefined) return wasm;")
       const end = jsOutStr.indexOf("const imports = __wbg_get_imports();")
       jsOutStr = `${jsOutStr.slice(0, st)}
 
