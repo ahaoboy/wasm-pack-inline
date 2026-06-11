@@ -1,7 +1,8 @@
 {
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "MIT",
   "name": "wasm-pack-inline",
+  "type": "module",
   "author": "ahaoboy",
   "module": "dist/index.js",
   "main": "dist/index.js",
@@ -22,18 +23,16 @@
     "node": ">=10"
   },
   "scripts": {
-    "format": "biome format --write  ./",
-    "lint:fix": "biome lint ./ --write --unsafe",
     "dev": "tsc -w",
     "build": "tsc"
   },
   "devDependencies": {
     "@types/fs-extra": "11.0.4",
-    "@types/node": "22.13.4",
-    "typescript": "5.7.3"
+    "@types/node": "25.9.2",
+    "typescript": "6.0.3"
   },
   "dependencies": {
-    "commander": "13.1.0",
-    "fs-extra": "11.3.0"
+    "commander": "15.0.0",
+    "fs-extra": "11.3.5"
   }
 }
